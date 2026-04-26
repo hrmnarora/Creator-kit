@@ -2,7 +2,7 @@
 import { useState, useRef } from "react";
 
 const API = "/api/chat";
-const MODEL = "gemini-2.5-flash-preview-05-20";
+const MODEL = "gemini-2.5-flash";
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
