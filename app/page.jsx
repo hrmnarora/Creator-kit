@@ -278,12 +278,35 @@ Return this exact JSON:
       let cleaned = jsonMatch[0]
         .replace(/,\s*}/g, "}")
         .replace(/,\s*]/g, "]")
-        .replace(/[\x00-\x1F\x7F]/g, " ")
-        .replace(/\n/g, " ")
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r")
+        .replace(/\t/g, "\\t")
         .trim();
 
-      const parsed = JSON.parse(cleaned);
-      setResults(parsed.concepts);
+      let parsed;
+      try {
+        parsed = JSON.parse(cleaned);
+        setResults(parsed.concepts);
+      } catch {
+        const concepts = [];
+        const matches = [
+          ...text.matchAll(
+            /"concept"\s*:\s*"([\s\S]*?)"\s*,\s*"emotion"\s*:\s*"([\s\S]*?)"\s*,\s*"psychology"\s*:\s*"([\s\S]*?)"/g,
+          ),
+        ];
+        matches.forEach((m, i) => {
+          concepts.push({
+            number: i + 1,
+            concept: m[1],
+            emotion: m[2],
+            psychology: m[3],
+          });
+        });
+        if (concepts.length === 0)
+          throw new Error("Could not parse Gemini response. Please try again.");
+        setResults(concepts);
+      }
     } catch (e) {
       setError(
         e.message ||
