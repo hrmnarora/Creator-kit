@@ -19,7 +19,7 @@ export async function POST(req) {
         { status: 400 }
       );
     }
-const { model = "gemini-2.5-pro", messages, max_tokens = 2000 } = body;
+const { model = "gemini-2.5-flash", messages, max_tokens = 2000 } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
