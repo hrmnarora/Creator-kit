@@ -180,7 +180,8 @@ async function callGemini({ messages, max_tokens = 2000 }) {
     body: JSON.stringify({ model: MODEL, max_tokens, messages }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || `API error ${res.status}`);
+  if (!res.ok)
+    throw new Error(data.error?.message || `API error ${res.status}`);
   const text = data.choices?.[0]?.message?.content || "";
   if (!text) throw new Error("Empty response from Gemini.");
   return text;
@@ -204,7 +205,10 @@ function ThumbnailTool() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setCreatorImage({ base64: reader.result.split(",")[1], mediaType: file.type });
+      setCreatorImage({
+        base64: reader.result.split(",")[1],
+        mediaType: file.type,
+      });
       setImagePreview(reader.result);
     };
     reader.readAsDataURL(file);
@@ -250,7 +254,14 @@ Return this exact JSON:
 
     const userContent = creatorImage
       ? [
-          { type: "image", source: { type: "base64", media_type: creatorImage.mediaType, data: creatorImage.base64 } },
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: creatorImage.mediaType,
+              data: creatorImage.base64,
+            },
+          },
           { type: "text", text: textPrompt },
         ]
       : textPrompt;
@@ -261,11 +272,23 @@ Return this exact JSON:
         max_tokens: 2000,
       });
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON returned. Response: " + text.slice(0, 300));
-      const parsed = JSON.parse(jsonMatch[0]);
+      if (!jsonMatch)
+        throw new Error("No JSON returned. Response: " + text.slice(0, 300));
+
+      let cleaned = jsonMatch[0]
+        .replace(/,\s*}/g, "}")
+        .replace(/,\s*]/g, "]")
+        .replace(/[\x00-\x1F\x7F]/g, " ")
+        .replace(/\n/g, " ")
+        .trim();
+
+      const parsed = JSON.parse(cleaned);
       setResults(parsed.concepts);
     } catch (e) {
-      setError(e.message || "Something went wrong. Check your API connection and try again.");
+      setError(
+        e.message ||
+          "Something went wrong. Check your API connection and try again.",
+      );
     }
     setLoading(false);
   };
@@ -275,67 +298,140 @@ Return this exact JSON:
       <div className="card">
         <div className="card-title">Thumbnail Idea Generator</div>
         <div className="card-desc">
-          Get 5 psychologically optimised thumbnail concepts. Upload the creator's photo to get specific expression and pose direction.
+          Get 5 psychologically optimised thumbnail concepts. Upload the
+          creator's photo to get specific expression and pose direction.
         </div>
 
         <div className="field">
           <label>Video Title</label>
-          <input value={title} onChange={e => setTitle(e.target.value)}
-            placeholder="e.g. I Studied 100 YouTubers For 30 Days — Here's What I Found" />
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. I Studied 100 YouTubers For 30 Days — Here's What I Found"
+          />
         </div>
 
         <div className="field">
-          <label>Video Description <span style={{color:"rgba(240,236,228,0.3)",fontWeight:300,letterSpacing:0}}>optional</span></label>
-          <textarea rows={3} value={desc} onChange={e => setDesc(e.target.value)}
-            placeholder="Brief summary of what the video covers and who it's for..." />
+          <label>
+            Video Description{" "}
+            <span
+              style={{
+                color: "rgba(240,236,228,0.3)",
+                fontWeight: 300,
+                letterSpacing: 0,
+              }}
+            >
+              optional
+            </span>
+          </label>
+          <textarea
+            rows={3}
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            placeholder="Brief summary of what the video covers and who it's for..."
+          />
         </div>
 
         <div className="field">
           <label>
             Creator Photo
-            <span style={{color:"rgba(240,236,228,0.3)", fontWeight:300, letterSpacing:0, marginLeft:6}}>
+            <span
+              style={{
+                color: "rgba(240,236,228,0.3)",
+                fontWeight: 300,
+                letterSpacing: 0,
+                marginLeft: 6,
+              }}
+            >
               — optional, for personalised pose & expression direction
             </span>
           </label>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: "none" }} />
-          <div className={`upload-zone ${imagePreview ? "has-image" : ""}`} onClick={() => fileRef.current?.click()}>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            style={{ display: "none" }}
+          />
+          <div
+            className={`upload-zone ${imagePreview ? "has-image" : ""}`}
+            onClick={() => fileRef.current?.click()}
+          >
             {imagePreview ? (
               <>
                 <img src={imagePreview} alt="Creator" className="preview-img" />
-                <div className="preview-overlay"><span>🔄 Change photo</span></div>
+                <div className="preview-overlay">
+                  <span>🔄 Change photo</span>
+                </div>
               </>
             ) : (
               <>
                 <div className="upload-icon">📸</div>
-                <div className="upload-hint"><strong>Click to upload creator photo</strong></div>
-                <div className="upload-sub">JPG, PNG or WEBP · AI will suggest poses tailored to this person</div>
+                <div className="upload-hint">
+                  <strong>Click to upload creator photo</strong>
+                </div>
+                <div className="upload-sub">
+                  JPG, PNG or WEBP · AI will suggest poses tailored to this
+                  person
+                </div>
               </>
             )}
           </div>
           {imagePreview && (
             <div className="img-row">
-              <div className="img-tag">✦ Photo added — concepts include pose direction</div>
-              <button className="btn btn-ghost" style={{ fontSize: "12px", padding: "5px 12px" }} onClick={removeImage}>Remove</button>
+              <div className="img-tag">
+                ✦ Photo added — concepts include pose direction
+              </div>
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: "12px", padding: "5px 12px" }}
+                onClick={removeImage}
+              >
+                Remove
+              </button>
             </div>
           )}
         </div>
 
         <div style={{ marginBottom: "20px" }}>
-          <button className="btn btn-ghost" style={{ fontSize: "13px", padding: "8px 16px" }} onClick={() => setShowVoice(!showVoice)}>
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: "13px", padding: "8px 16px" }}
+            onClick={() => setShowVoice(!showVoice)}
+          >
             {showVoice ? "▲ Hide" : "▼ Add"} thumbnail style training (optional)
           </button>
           {showVoice && (
             <div className="voice-area">
-              <div className="voice-label">✦ Describe thumbnail style or paste past video titles</div>
-              <textarea rows={4} value={voice} onChange={e => setVoice(e.target.value)}
+              <div className="voice-label">
+                ✦ Describe thumbnail style or paste past video titles
+              </div>
+              <textarea
+                rows={4}
+                value={voice}
+                onChange={(e) => setVoice(e.target.value)}
                 placeholder="e.g. always uses bold red text, face close-up, high contrast. Or paste 5-10 past video titles..."
-                style={{ width:"100%", background:"transparent", border:"none", color:"rgba(240,236,228,0.7)", fontFamily:"DM Sans, sans-serif", fontSize:"13px", outline:"none", resize:"vertical", padding:"0" }}
+                style={{
+                  width: "100%",
+                  background: "transparent",
+                  border: "none",
+                  color: "rgba(240,236,228,0.7)",
+                  fontFamily: "DM Sans, sans-serif",
+                  fontSize: "13px",
+                  outline: "none",
+                  resize: "vertical",
+                  padding: "0",
+                }}
               />
             </div>
           )}
         </div>
 
-        <button className="btn btn-primary" onClick={generate} disabled={loading || !title.trim()}>
+        <button
+          className="btn btn-primary"
+          onClick={generate}
+          disabled={loading || !title.trim()}
+        >
           {loading ? "Generating..." : "✦ Generate 5 Concepts"}
         </button>
 
@@ -345,7 +441,9 @@ Return this exact JSON:
       {loading && (
         <div className="loading">
           <div className="spinner" />
-          {creatorImage ? "Analysing creator photo + thumbnail psychology..." : "Analysing thumbnail psychology..."}
+          {creatorImage
+            ? "Analysing creator photo + thumbnail psychology..."
+            : "Analysing thumbnail psychology..."}
         </div>
       )}
 
@@ -353,13 +451,28 @@ Return this exact JSON:
         <div className="results">
           <div className="results-header">
             <div className="results-title">5 Thumbnail Concepts</div>
-            <button className="btn btn-ghost" style={{ fontSize: "12px", padding: "6px 14px" }}
-              onClick={() => { setResults(null); setTitle(""); setDesc(""); }}>Clear</button>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: "12px", padding: "6px 14px" }}
+              onClick={() => {
+                setResults(null);
+                setTitle("");
+                setDesc("");
+              }}
+            >
+              Clear
+            </button>
           </div>
           <div className="thumb-grid">
             {results.map((item, i) => (
-              <div className="thumb-card" key={i} style={{ animationDelay: `${i * 0.08}s` }}>
-                <div className="thumb-number">Concept 0{item.number || i + 1}</div>
+              <div
+                className="thumb-card"
+                key={i}
+                style={{ animationDelay: `${i * 0.08}s` }}
+              >
+                <div className="thumb-number">
+                  Concept 0{item.number || i + 1}
+                </div>
                 <div className="thumb-concept">{item.concept}</div>
                 <div className="thumb-tags">
                   <span className="tag tag-emotion">⚡ {item.emotion}</span>
@@ -389,10 +502,14 @@ function ScriptTool() {
   const [error, setError] = useState("");
 
   const toneMap = {
-    "casual-educational": "Casual but educational — like a smart friend explaining something",
-    "motivational": "High energy and motivational — creates urgency and excitement",
-    "storytelling": "Story-driven — personal anecdotes, narrative arc, emotional beats",
-    "analytical": "Data-driven and analytical — facts, research, logical structure",
+    "casual-educational":
+      "Casual but educational — like a smart friend explaining something",
+    motivational:
+      "High energy and motivational — creates urgency and excitement",
+    storytelling:
+      "Story-driven — personal anecdotes, narrative arc, emotional beats",
+    analytical:
+      "Data-driven and analytical — facts, research, logical structure",
   };
 
   const generate = async () => {
@@ -431,7 +548,10 @@ Format each section with **BOLD HEADER**. Write the full script, not an outline.
       setScript(text);
       setHistory(msgs);
     } catch (e) {
-      setError(e.message || "Something went wrong. Check your connection and try again.");
+      setError(
+        e.message ||
+          "Something went wrong. Check your connection and try again.",
+      );
     }
     setLoading(false);
   };
@@ -456,30 +576,40 @@ Format each section with **BOLD HEADER**. Write the full script, not an outline.
   };
 
   const formatScript = (text) =>
-    text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\n/g, "<br/>");
+    text
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\n/g, "<br/>");
 
   return (
     <div>
       <div className="card">
         <div className="card-title">Script Generator</div>
         <div className="card-desc">
-          Full YouTube scripts with hooks, structure, and CTAs. Add voice training for creator-specific tone.
+          Full YouTube scripts with hooks, structure, and CTAs. Add voice
+          training for creator-specific tone.
         </div>
 
         <div className="field">
           <label>Video Topic</label>
-          <input value={topic} onChange={e => setTopic(e.target.value)}
-            placeholder="e.g. Why most people fail at building habits (and what actually works)" />
+          <input
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="e.g. Why most people fail at building habits (and what actually works)"
+          />
         </div>
 
         <div className="row">
           <div className="field">
             <label>Target Audience</label>
-            <input value={audience} onChange={e => setAudience(e.target.value)} placeholder="e.g. College students, entrepreneurs" />
+            <input
+              value={audience}
+              onChange={(e) => setAudience(e.target.value)}
+              placeholder="e.g. College students, entrepreneurs"
+            />
           </div>
           <div className="field">
             <label>Video Length</label>
-            <select value={length} onChange={e => setLength(e.target.value)}>
+            <select value={length} onChange={(e) => setLength(e.target.value)}>
               <option value="5">5 minutes</option>
               <option value="8">8 minutes</option>
               <option value="12">12 minutes</option>
@@ -491,7 +621,7 @@ Format each section with **BOLD HEADER**. Write the full script, not an outline.
 
         <div className="field">
           <label>Tone</label>
-          <select value={tone} onChange={e => setTone(e.target.value)}>
+          <select value={tone} onChange={(e) => setTone(e.target.value)}>
             <option value="casual-educational">Casual Educational</option>
             <option value="motivational">High Energy / Motivational</option>
             <option value="storytelling">Story-Driven</option>
@@ -500,47 +630,98 @@ Format each section with **BOLD HEADER**. Write the full script, not an outline.
         </div>
 
         <div style={{ marginBottom: "20px" }}>
-          <button className="btn btn-ghost" style={{ fontSize: "13px", padding: "8px 16px" }} onClick={() => setShowVoice(!showVoice)}>
+          <button
+            className="btn btn-ghost"
+            style={{ fontSize: "13px", padding: "8px 16px" }}
+            onClick={() => setShowVoice(!showVoice)}
+          >
             {showVoice ? "▲ Hide" : "▼ Add"} creator voice training (optional)
           </button>
           {showVoice && (
             <div className="voice-area">
-              <div className="voice-label">✦ Paste transcript excerpts or describe speaking style</div>
-              <textarea rows={5} value={voice} onChange={e => setVoice(e.target.value)}
+              <div className="voice-label">
+                ✦ Paste transcript excerpts or describe speaking style
+              </div>
+              <textarea
+                rows={5}
+                value={voice}
+                onChange={(e) => setVoice(e.target.value)}
                 placeholder="Paste 2-3 paragraphs from past scripts or transcripts... AI will match their vocabulary, rhythm, and energy."
-                style={{ width:"100%", background:"transparent", border:"none", color:"rgba(240,236,228,0.7)", fontFamily:"DM Sans, sans-serif", fontSize:"13px", outline:"none", resize:"vertical", padding:"0" }}
+                style={{
+                  width: "100%",
+                  background: "transparent",
+                  border: "none",
+                  color: "rgba(240,236,228,0.7)",
+                  fontFamily: "DM Sans, sans-serif",
+                  fontSize: "13px",
+                  outline: "none",
+                  resize: "vertical",
+                  padding: "0",
+                }}
               />
             </div>
           )}
         </div>
 
-        <button className="btn btn-primary" onClick={generate} disabled={loading || !topic.trim()}>
+        <button
+          className="btn btn-primary"
+          onClick={generate}
+          disabled={loading || !topic.trim()}
+        >
           {loading ? "Writing..." : "✦ Generate Script"}
         </button>
         {error && <div className="error">{error}</div>}
       </div>
 
-      {loading && <div className="loading"><div className="spinner" />Writing your script...</div>}
+      {loading && (
+        <div className="loading">
+          <div className="spinner" />
+          Writing your script...
+        </div>
+      )}
 
       {script && !loading && (
         <div className="results">
           <div className="results-header">
             <div className="results-title">Your Script</div>
-            <button className="btn btn-ghost" style={{ fontSize: "12px", padding: "6px 14px" }}
-              onClick={() => navigator.clipboard.writeText(script)}>Copy</button>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: "12px", padding: "6px 14px" }}
+              onClick={() => navigator.clipboard.writeText(script)}
+            >
+              Copy
+            </button>
           </div>
           <div className="script-output">
-            <div className="script-text" dangerouslySetInnerHTML={{ __html: formatScript(script) }} />
+            <div
+              className="script-text"
+              dangerouslySetInnerHTML={{ __html: formatScript(script) }}
+            />
           </div>
           <div className="divider" />
-          <div style={{ marginBottom: "8px", fontSize: "13px", color: "rgba(240,236,228,0.4)" }}>
+          <div
+            style={{
+              marginBottom: "8px",
+              fontSize: "13px",
+              color: "rgba(240,236,228,0.4)",
+            }}
+          >
             Want to refine something? Tell me what to change.
           </div>
           <div className="refine-box">
-            <input value={refine} onChange={e => setRefine(e.target.value)}
+            <input
+              value={refine}
+              onChange={(e) => setRefine(e.target.value)}
               placeholder="e.g. Make the hook more aggressive, shorten section 2, add more storytelling..."
-              onKeyDown={e => e.key === "Enter" && refineScript()} />
-            <button className="btn btn-primary" onClick={refineScript} disabled={!refine.trim() || loading}>Refine</button>
+              onKeyDown={(e) => e.key === "Enter" && refineScript()}
+            />
+            <button
+              className="btn btn-primary"
+              onClick={refineScript}
+              disabled={!refine.trim() || loading}
+            >
+              Refine
+            </button>
           </div>
         </div>
       )}
@@ -588,7 +769,8 @@ Return ONLY valid JSON with no markdown or explanation:
         max_tokens: 3000,
       });
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON returned. Response: " + text.slice(0, 200));
+      if (!jsonMatch)
+        throw new Error("No JSON returned. Response: " + text.slice(0, 200));
       const parsed = JSON.parse(jsonMatch[0]);
       setResult(parsed);
     } catch (e) {
@@ -602,19 +784,41 @@ Return ONLY valid JSON with no markdown or explanation:
       <div className="card">
         <div className="card-title">Video Research Brief</div>
         <div className="card-desc">
-          Enter your video topic — AI gives you a structured brief of exactly what to cover.
+          Enter your video topic — AI gives you a structured brief of exactly
+          what to cover.
         </div>
         <div className="field">
           <label>Video Topic</label>
-          <input value={topic} onChange={e => setTopic(e.target.value)}
-            placeholder="e.g. How to build a morning routine that actually sticks" />
+          <input
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="e.g. How to build a morning routine that actually sticks"
+          />
         </div>
         <div className="field">
-          <label>Target Audience <span style={{color:"rgba(240,236,228,0.3)",fontWeight:300,letterSpacing:0}}>optional</span></label>
-          <input value={audience} onChange={e => setAudience(e.target.value)}
-            placeholder="e.g. Entrepreneurs, college students, fitness beginners" />
+          <label>
+            Target Audience{" "}
+            <span
+              style={{
+                color: "rgba(240,236,228,0.3)",
+                fontWeight: 300,
+                letterSpacing: 0,
+              }}
+            >
+              optional
+            </span>
+          </label>
+          <input
+            value={audience}
+            onChange={(e) => setAudience(e.target.value)}
+            placeholder="e.g. Entrepreneurs, college students, fitness beginners"
+          />
         </div>
-        <button className="btn btn-primary" onClick={generate} disabled={loading || !topic.trim()}>
+        <button
+          className="btn btn-primary"
+          onClick={generate}
+          disabled={loading || !topic.trim()}
+        >
           {loading ? "Researching..." : "✦ Research This Topic"}
         </button>
         {error && <div className="error">{error}</div>}
@@ -631,74 +835,230 @@ Return ONLY valid JSON with no markdown or explanation:
         <div className="results">
           <div className="results-header">
             <div className="results-title">Research Brief</div>
-            <button className="btn btn-ghost" style={{ fontSize: "12px", padding: "6px 14px" }}
-              onClick={() => { setResult(null); setTopic(""); setAudience(""); }}>Clear</button>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: "12px", padding: "6px 14px" }}
+              onClick={() => {
+                setResult(null);
+                setTopic("");
+                setAudience("");
+              }}
+            >
+              Clear
+            </button>
           </div>
 
           <div className="thumb-card" style={{ marginBottom: "16px" }}>
             <div className="thumb-number">Refined Topic</div>
-            <div style={{ fontSize: "18px", fontWeight: 700, color: "#f0ece4", marginBottom: "14px" }}>{result.topic}</div>
+            <div
+              style={{
+                fontSize: "18px",
+                fontWeight: 700,
+                color: "#f0ece4",
+                marginBottom: "14px",
+              }}
+            >
+              {result.topic}
+            </div>
             <div className="thumb-number">Why Now</div>
-            <div style={{ fontSize: "14px", color: "rgba(240,236,228,0.75)", lineHeight: 1.7 }}>{result.why_now}</div>
+            <div
+              style={{
+                fontSize: "14px",
+                color: "rgba(240,236,228,0.75)",
+                lineHeight: 1.7,
+              }}
+            >
+              {result.why_now}
+            </div>
           </div>
 
           <div className="thumb-card" style={{ marginBottom: "16px" }}>
             <div className="thumb-number">Audience Pain Points</div>
             {(result.audience_pain_points || []).map((p, i) => (
-              <div key={i} style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-                <span style={{ color: "#ffb400", fontWeight: 800, fontSize: "13px", flexShrink: 0 }}>0{i + 1}</span>
-                <div style={{ fontSize: "14px", color: "rgba(240,236,228,0.8)", lineHeight: 1.5 }}>{p}</div>
+              <div
+                key={i}
+                style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
+              >
+                <span
+                  style={{
+                    color: "#ffb400",
+                    fontWeight: 800,
+                    fontSize: "13px",
+                    flexShrink: 0,
+                  }}
+                >
+                  0{i + 1}
+                </span>
+                <div
+                  style={{
+                    fontSize: "14px",
+                    color: "rgba(240,236,228,0.8)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {p}
+                </div>
               </div>
             ))}
           </div>
 
           <div className="thumb-card" style={{ marginBottom: "16px" }}>
-            <div className="thumb-number" style={{ marginBottom: "16px" }}>Key Points to Cover</div>
+            <div className="thumb-number" style={{ marginBottom: "16px" }}>
+              Key Points to Cover
+            </div>
             {(result.key_points || []).map((pt, i) => (
-              <div key={i} style={{ marginBottom: "18px", paddingBottom: "18px", borderBottom: i < result.key_points.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
-                  <span style={{ fontSize: "13px", fontFamily: "Syne, sans-serif", fontWeight: 700, color: "#f0ece4" }}>{pt.heading}</span>
-                  <span style={{
-                    fontSize: "10px", padding: "2px 8px", borderRadius: "100px", fontWeight: 600, letterSpacing: "0.5px",
-                    background: pt.importance === "high" ? "rgba(255,180,0,0.12)" : "rgba(255,255,255,0.06)",
-                    color: pt.importance === "high" ? "#ffb400" : "rgba(240,236,228,0.4)",
-                    border: pt.importance === "high" ? "1px solid rgba(255,180,0,0.25)" : "1px solid rgba(255,255,255,0.08)"
-                  }}>{pt.importance === "high" ? "⬆ High Priority" : "Medium"}</span>
+              <div
+                key={i}
+                style={{
+                  marginBottom: "18px",
+                  paddingBottom: "18px",
+                  borderBottom:
+                    i < result.key_points.length - 1
+                      ? "1px solid rgba(255,255,255,0.06)"
+                      : "none",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    marginBottom: "6px",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "13px",
+                      fontFamily: "Syne, sans-serif",
+                      fontWeight: 700,
+                      color: "#f0ece4",
+                    }}
+                  >
+                    {pt.heading}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      padding: "2px 8px",
+                      borderRadius: "100px",
+                      fontWeight: 600,
+                      letterSpacing: "0.5px",
+                      background:
+                        pt.importance === "high"
+                          ? "rgba(255,180,0,0.12)"
+                          : "rgba(255,255,255,0.06)",
+                      color:
+                        pt.importance === "high"
+                          ? "#ffb400"
+                          : "rgba(240,236,228,0.4)",
+                      border:
+                        pt.importance === "high"
+                          ? "1px solid rgba(255,180,0,0.25)"
+                          : "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    {pt.importance === "high" ? "⬆ High Priority" : "Medium"}
+                  </span>
                 </div>
-                <div style={{ fontSize: "13px", color: "rgba(240,236,228,0.55)", lineHeight: 1.7 }}>{pt.detail}</div>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    color: "rgba(240,236,228,0.55)",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {pt.detail}
+                </div>
               </div>
             ))}
           </div>
 
-          <div className="thumb-card" style={{ marginBottom: "16px", border: "1px solid rgba(255,180,0,0.2)", background: "rgba(255,180,0,0.04)" }}>
+          <div
+            className="thumb-card"
+            style={{
+              marginBottom: "16px",
+              border: "1px solid rgba(255,180,0,0.2)",
+              background: "rgba(255,180,0,0.04)",
+            }}
+          >
             <div className="thumb-number">Your Unique Angle</div>
-            <div style={{ fontSize: "15px", color: "#f0ece4", lineHeight: 1.6, fontWeight: 500 }}>{result.unique_angle}</div>
+            <div
+              style={{
+                fontSize: "15px",
+                color: "#f0ece4",
+                lineHeight: 1.6,
+                fontWeight: 500,
+              }}
+            >
+              {result.unique_angle}
+            </div>
           </div>
 
           <div className="thumb-card" style={{ marginBottom: "16px" }}>
             <div className="thumb-number">Hook Ideas</div>
             {(result.hook_ideas || []).map((h, i) => (
-              <div key={i} style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-                <span style={{ color: "#ffb400", fontWeight: 800, flexShrink: 0 }}>→</span>
-                <div style={{ fontSize: "14px", color: "rgba(240,236,228,0.8)", lineHeight: 1.5 }}>{h}</div>
+              <div
+                key={i}
+                style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
+              >
+                <span
+                  style={{ color: "#ffb400", fontWeight: 800, flexShrink: 0 }}
+                >
+                  →
+                </span>
+                <div
+                  style={{
+                    fontSize: "14px",
+                    color: "rgba(240,236,228,0.8)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {h}
+                </div>
               </div>
             ))}
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "16px",
+            }}
+          >
             <div className="thumb-card">
               <div className="thumb-number">Avoid These Angles</div>
               {(result.angles_to_avoid || []).map((a, i) => (
-                <div key={i} style={{ fontSize: "13px", color: "rgba(240,236,228,0.5)", marginBottom: "8px", display: "flex", gap: "8px" }}>
-                  <span style={{ color: "rgba(255,80,80,0.7)" }}>✕</span>{a}
+                <div
+                  key={i}
+                  style={{
+                    fontSize: "13px",
+                    color: "rgba(240,236,228,0.5)",
+                    marginBottom: "8px",
+                    display: "flex",
+                    gap: "8px",
+                  }}
+                >
+                  <span style={{ color: "rgba(255,80,80,0.7)" }}>✕</span>
+                  {a}
                 </div>
               ))}
             </div>
             <div className="thumb-card">
               <div className="thumb-number">Research Further</div>
               {(result.sources_to_research || []).map((s, i) => (
-                <div key={i} style={{ fontSize: "13px", color: "rgba(240,236,228,0.5)", marginBottom: "8px", display: "flex", gap: "8px" }}>
-                  <span style={{ color: "#ffb400" }}>↗</span>{s}
+                <div
+                  key={i}
+                  style={{
+                    fontSize: "13px",
+                    color: "rgba(240,236,228,0.5)",
+                    marginBottom: "8px",
+                    display: "flex",
+                    gap: "8px",
+                  }}
+                >
+                  <span style={{ color: "#ffb400" }}>↗</span>
+                  {s}
                 </div>
               ))}
             </div>
@@ -717,20 +1077,50 @@ export default function App() {
       <style>{styles}</style>
       <div className="app">
         <header className="header">
-          <div className="logo">creator<span>kit</span></div>
+          <div className="logo">
+            creator<span>kit</span>
+          </div>
           <div className="badge">AI Powered</div>
         </header>
         <main className="main">
           <div className="hero">
-            <h1>Tools built for<br /><em>serious creators</em></h1>
-            <p>Thumbnail concepts that get clicked. Scripts that retain viewers. Research briefs that inform. Powered by Gemini AI.</p>
+            <h1>
+              Tools built for
+              <br />
+              <em>serious creators</em>
+            </h1>
+            <p>
+              Thumbnail concepts that get clicked. Scripts that retain viewers.
+              Research briefs that inform. Powered by Gemini AI.
+            </p>
           </div>
           <div className="tabs">
-            <button className={"tab" + (tab === "thumbnail" ? " active" : "")} onClick={() => setTab("thumbnail")}>Thumbnail Generator</button>
-            <button className={"tab" + (tab === "script" ? " active" : "")} onClick={() => setTab("script")}>Script Generator</button>
-            <button className={"tab" + (tab === "research" ? " active" : "")} onClick={() => setTab("research")}>Topic Research</button>
+            <button
+              className={"tab" + (tab === "thumbnail" ? " active" : "")}
+              onClick={() => setTab("thumbnail")}
+            >
+              Thumbnail Generator
+            </button>
+            <button
+              className={"tab" + (tab === "script" ? " active" : "")}
+              onClick={() => setTab("script")}
+            >
+              Script Generator
+            </button>
+            <button
+              className={"tab" + (tab === "research" ? " active" : "")}
+              onClick={() => setTab("research")}
+            >
+              Topic Research
+            </button>
           </div>
-          {tab === "thumbnail" ? <ThumbnailTool /> : tab === "script" ? <ScriptTool /> : <ResearchTool />}
+          {tab === "thumbnail" ? (
+            <ThumbnailTool />
+          ) : tab === "script" ? (
+            <ScriptTool />
+          ) : (
+            <ResearchTool />
+          )}
         </main>
       </div>
     </>
